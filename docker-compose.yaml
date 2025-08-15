@@ -1,0 +1,36 @@
+services:
+
+  krm:
+    image: &image kubed/krm:latest
+    container_name: krm
+    build:
+      tags:
+      - *image
+      - kubed/krm:${GIT_SHA:-latest}
+      - kubed/krm:${GIT_REF:-latest}
+      - kubed/krm:${GIT_TAG:-latest}
+      x-bake:
+        platforms:
+        - linux/amd64
+        - linux/arm64
+        cache-to: type=gha,mode=max,scope=kubed-krm
+        cache-from: type=gha,scope=kubed-krm
+    restart: no
+    tty: true
+    stdin_open: true
+    labels:
+      kubed.io/type: cli
+      kubed.io/category: iac
+    working_dir: ${PWD}
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - $HOME:$HOME:Z
+    environment:
+      COMPOSE_IGNORE_ORPHANS: 'true'
+      COMPOSE_PROJECT_NAME: kubed-krm
+      KUBECONFIG: $HOME/.kube/config
+    entrypoint:
+    - /bin/sh
+    - -c
+    command:
+    - tail -f /dev/null
