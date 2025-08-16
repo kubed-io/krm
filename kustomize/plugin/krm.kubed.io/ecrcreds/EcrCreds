@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -e
+
+res="$(cat $1)"
+ns=$(yq e '.metadata.namespace // "default"' $1)
+name=$(yq e '.metadata.name' $1)
+cmdArgs=()
+
+if [ "$(yq e '.spec | has("account")' $1)" == 'true' ]; 
+then
+  account_id="(yq e '.spec.account' $1)"
+else
+  account_id="$(aws sts get-caller-identity --query Account --output text)"
+fi
+
+if [ "$(yq e '.spec | has("region")' $1)" == 'true' ]; 
+then
+  region="(yq e '.spec.region' $1)"
+else
+  region="$(aws configure get region)"
+fi
+
+if [ "$(yq e '.spec | has("email")' $1)" == 'true' ]; 
+then
+  cmdArgs+=("--docker-email=$(yq e '.spec.email' $1)")
+fi
+
+cmdArgs+=("--docker-username=AWS")
+cmdArgs+=("--docker-server=${account_id}.dkr.ecr.${region}.amazonaws.com")
+cmdArgs+=("--docker-password=$(aws ecr get-login-password --region ${region})")
+
+kubectl create secret docker-registry $name "${cmdArgs[@]}" --dry-run=client -o yaml

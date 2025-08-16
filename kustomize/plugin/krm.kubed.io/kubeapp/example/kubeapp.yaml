@@ -1,0 +1,7 @@
+apiVersion: krm.kubed.io
+kind: KubeApp
+metadata:
+  name: test-variables
+spec:
+  image: busybox
+  expose: true

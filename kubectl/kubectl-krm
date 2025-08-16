@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+KRMFX_DIR="${XDG_CONFIG_HOME}/kustomize/plugin/krm.kubed.io"
+
+KRM_NAME="$1"
+KRM_NAME_LOWER="$(echo "$KRM_NAME" | tr '[:upper:]' '[:lower:]')"
+KRMFX="${KRMFX_DIR}/${KRM_NAME_LOWER}/${KRM_NAME}"
+
+$KRMFX $@

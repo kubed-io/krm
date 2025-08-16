@@ -1,4 +1,4 @@
-FROM alpine:latest 
+FROM alpine:latest AS krm
 
 ARG KUSTOMIZE_VERSION=v5.7.1 \
     KREW_VERSION=v0.4.5 \
@@ -14,7 +14,11 @@ WORKDIR ${WORKDIR}
 ENV KUBECONFIG=${WORKDIR}/.kube/config \
     XDG_CONFIG_HOME=${WORKDIR} \
     ENABLE_ALPHA_PLUGINS="true" \
-    PATH="${WORKDIR}/.krew/bin:${WORKDIR}/bin:$PATH"
+    PATH="${WORKDIR}/.krew/bin:${WORKDIR}/kubectl:$PATH"
+
+COPY ./kubectl ./kubectl 
+COPY ./kustomize ./kustomize
+COPY ./build ./build
 
 RUN apk --no-cache --update add \
     curl git gettext bash kubectl helm yq fzf docker-cli docker-compose
@@ -22,31 +26,36 @@ RUN apk --no-cache --update add \
 RUN <<EOF
 addgroup -g 1000 krm
 adduser -u 1000 -G krm -h ${WORKDIR} -s /bin/bash -D -S krm
-mkdir -p "${WORKDIR}" "${WORKDIR}/.kube" "${WORKDIR}/.krew" "${WORKDIR}/kustomize" "${WORKDIR}/tmp"
+mkdir -p "${WORKDIR}" "${WORKDIR}/.kube" "${WORKDIR}/.krew" "${WORKDIR}/tmp"
 chown -R krm:krm ${WORKDIR}
 
 addgroup -g 983 docker
 addgroup krm docker
+chmod +x ${WORKDIR}/build/*
+chmod +x ${WORKDIR}/kubectl/*
 EOF
 
-RUN <<EOF
-ARCH="${TARGETPLATFORM#*/}"
-OS="${TARGETPLATFORM%%/*}"
-
-echo "installing Kustomize"
-curl -L "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_${ARCH}.tar.gz" | tar -xz -C /usr/local/bin kustomize
-chmod +x /usr/local/bin/kustomize
-
-echo "Installing Krew"
-KREW="krew-${OS}_${ARCH}"
-curl -L "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz" -o tmp/${KREW}.tar.gz
-tar -xzf tmp/${KREW}.tar.gz -C tmp
-chmod +x tmp/${KREW}
-mv tmp/${KREW} /usr/local/bin/kubectl-krew
-
-echo "Install Kompose"
-curl -L "https://github.com/kubernetes/kompose/releases/download/${KOMPOSE_VERSION}/kompose-linux-${ARCH}" -o /usr/local/bin/kubectl-kompose
-chmod +x /usr/local/bin/kubectl-kompose
-EOF
+RUN ${WORKDIR}/build/install.sh
 
 ENTRYPOINT ["kubectl"]
+
+##
+# Dev container build
+# docs: https://github.com/microsoft/vscode-dev-containers/blob/main/containers/python-3/README.md
+# Makes the dev container environment
+##
+FROM mcr.microsoft.com/vscode/devcontainers/base:ubuntu AS dev
+ARG NODE_VERSION="none"
+
+COPY --from=krm \
+    /usr/local/bin/kustomize \
+    /usr/local/bin/kubectl-krew \
+    /usr/local/bin/kubectl-kompose \
+    /usr/local/bin/
+
+RUN <<EOF 
+export DEBIAN_FRONTEND=noninteractive && apt-get update
+apt-get -y install --no-install-recommends direnv yq
+apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/library-scripts 
+mkdir -p "${HOME}/.kube" "${HOME}/.krew" "${HOME}/kustomize" "${HOME}/tmp"
+EOF

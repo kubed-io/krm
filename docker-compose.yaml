@@ -4,6 +4,7 @@ services:
     image: &image kubed/krm:latest
     container_name: krm
     build:
+      target: krm
       tags:
       - *image
       - kubed/krm:${GIT_SHA:-latest}
@@ -21,16 +22,15 @@ services:
     labels:
       kubed.io/type: cli
       kubed.io/category: iac
-    working_dir: ${PWD}
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
-    - $HOME:$HOME:Z
+    - ./examples:/workspace/examples:Z
     environment:
       COMPOSE_IGNORE_ORPHANS: 'true'
       COMPOSE_PROJECT_NAME: kubed-krm
       KUBECONFIG: $HOME/.kube/config
     entrypoint:
-    - /bin/sh
-    - -c
+    - tail
     command:
-    - tail -f /dev/null
+    - -f
+    - /dev/null

@@ -1,0 +1,7 @@
+apiVersion: krm.kubed.io
+kind: EcrCreds
+metadata:
+  name: regcreds
+spec:
+  email: foo@bar.com
+  

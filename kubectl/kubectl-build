@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -e
+
+project=$1
+shift
+
+kustomize build \
+  --enable-alpha-plugins \
+  --enable-helm \
+  --enable-exec \
+  --network \
+  "$@" \
+  "$project"

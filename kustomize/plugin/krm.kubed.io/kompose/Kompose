@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+set -e
+
+wkdir="$(pwd)"
+res="$(cat $1)"
+komposeArgs=()
+files=()
+
+function fail_on_error() {
+    RED="\033[0;31m"
+    echo -e "${RED}ERROR: ${1}${RED}" >&2
+    exit 1
+}
+
+function hasArg() {
+   echo "$res" | yq e '.spec | has("'$1'")' -
+}
+
+function addArg() {
+   if [ "$(hasArg $1)" == 'true' ]; then
+      komposeArgs+=("--$1=$(echo "$res" | yq e '.spec.'$1'' -)")
+   fi
+}
+
+addArg "controller"
+addArg "replicas"
+addArg "volumes"
+addArg "provider"
+addArg "with-kompose-annotation"
+
+if [ "$(hasArg 'files')" != 'true' ]; then
+   res="$(echo "$res" | yq e '.spec.files[0] = "docker-compose.yml"' -)"
+fi
+fLength=$(echo "$res" | yq e '.spec.files | length' -)
+for (( i=0; i<$fLength; i++ ))
+do
+   f=$(echo "$res" | yq e '.spec.files['$i']' -)
+   file="${wkdir}/${f}"
+   if [ ! -f "$file" ]; then
+      fail_on_error "The file does not exist: $file \n At least one docker-compose is required"
+   fi
+   files+=(-f "$file")
+done
+
+
+kompose convert \
+   "${komposeArgs[@]}" \
+   --stdout "${files[@]}" \
+   | yq '.items[] | splitDoc' -

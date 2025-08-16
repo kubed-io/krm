@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -e
+
+args=""
+appName="$(yq '.metadata.name' $1)"
+
+function fail_on_error() {
+    RED="\033[0;31m"
+    echo -e "${RED}ERROR: ${1}${RED}" >&2
+    exit 1
+}
+function set_arg() {
+    if [ -z "${2}" ]; then
+      fail_on_error "KubeApp/${appName} is missing ${1}"
+    else
+      args+=" --${1}=${2}"
+    fi
+}
+
+args+="$appName"
+set_arg image "$(yq e '.spec.image // ""' $1)"
+set_arg restart "$(yq e '.spec.restart // "Never"' $1)"
+set_arg port "$(yq e '.spec.port // "8080"' $1)"
+set_arg expose "$(yq e '.spec.expose // "false"' $1)"
+
+kubectl run $args \
+  --dry-run='client' \
+  -o yaml 
+#   "$(yq e '.metadata.name' $1)" \
+#   --image="$(yq e '.spec.image' $1)" \
+#   --restart="$(yq e '.spec.restart' $1)" \
+#   --dry-run='client' \
+#   -o yaml 

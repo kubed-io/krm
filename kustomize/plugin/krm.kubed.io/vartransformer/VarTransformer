@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -e
+
+res="$(cat $1)"
+sedMap=()
+
+length=$(echo "$res" | yq '.vars | length' -)
+
+for (( i=0; i<$length; i++ ))
+do
+   var="$(echo "$res" | yq '.vars['$i']' -)"
+   varName=$(echo "$var" | yq '.name' -)
+
+   if [ "$(echo "$var" | yq '. | has("valueFrom")' -)" == 'true' ];
+   then
+   
+      # get the environment variables
+      if [ "$(echo "$var" | yq '.valueFrom | has("env")' -)" == 'true' ]
+      then
+         envVar=$(echo "$var" | yq '.valueFrom.env' -)
+         var="$(echo "$var" | yq '.value = env('$envVar')' -)"
+      
+      # find value based on live reference to cluster
+      elif [ "$(echo "$var" | yq '.valueFrom | has("liveRef")' -)" == 'true' ]
+      then
+         ref="$(echo "$var" | yq '.valueFrom.liveRef' -)"
+         refName="$(echo "$ref" | yq '.name' -)"
+         refNS="$(echo "$ref" | yq '.namespace // "default"' -)"
+         fieldPath="$(echo "$ref" | yq '.fieldPath' -)"
+         liveRef="$(kubectl get "$refName" -n "$refNS" -o=jsonpath="{$fieldPath}")"
+         var="$(echo "$var" | yq '.value = "'$liveRef'"' -)"
+      fi
+
+   fi
+
+   varValue="$(echo "$var" | yq '.value' -)"
+   sedMap+=(-e "s#\$(${varName})#${varValue}#g")
+done
+
+# echo "${sedMap[@]}"
+sed "${sedMap[@]}"

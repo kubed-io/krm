@@ -1,0 +1,77 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-docker-compose
+{
+	"name": "Kubed KRM Dev",
+
+	// Update the 'dockerComposeFile' list if you have more compose files or use different names.
+	// The .devcontainer/docker-compose.yml file contains any overrides you need/want to make.
+	// "service": "kubed-dev",
+	// "runServices": [],
+	// "dockerComposeFile": [
+	// 	"docker-compose.yaml"
+	// ],
+	
+	"build": {
+		"dockerfile": "Dockerfile",
+		"target": "dev"
+	},
+	// The optional 'workspaceFolder' property is the path VS Code should open by default when
+	// connected. This is typically a file mount in .devcontainer/docker-compose.yml
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	"features": {
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+		"ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {}
+	},
+
+	"containerEnv": {
+		"SSH_AUTH_SOCK": "/home/vscode/.1password/agent.sock",
+		"KUBECONFIG": "/home/vscode/.kube/config",
+		"XDG_CONFIG_HOME": "/workspaces/krm"
+	},
+	"remoteEnv": {
+		"PATH": "${containerEnv:PATH}:/workspaces/krm/kubectl"
+	},
+
+	"mounts": [
+		// "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+		"source=${env:HOME}/.1password/agent.sock,target=/home/vscode/.1password/agent.sock,type=bind",
+		"source=${env:HOME}/.kube,target=/home/vscode/.kube,type=bind",
+		"source=${env:HOME}/.ssh,target=/home/vscode/.ssh,type=bind",
+		"source=${env:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind",
+		"source=/opt/1Password,target=/opt/1Password,type=bind"
+	],
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// Uncomment the next line if you want to keep your containers running after VS Code shuts down.
+	// "shutdownAction": "none",
+
+	// Uncomment the next line to run commands after the container is created.
+	// "postCreateCommand": "echo hello",
+
+	// "postStartCommand": "./build.sh post_start",
+
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"redhat.vscode-yaml",
+				"ms-kubernetes-tools.vscode-kubernetes-tools",
+				"mads-hartmann.bash-ide-vscode",
+				"github.copilot",
+				"github.vscode-github-actions"
+			],
+			"settings": {
+				"vs-kubernetes": {
+					"vs-kubernetes.kubeconfig": "/home/vscode/.kube/config"
+				}
+			}
+		}
+	}
+
+	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "devcontainer"
+}

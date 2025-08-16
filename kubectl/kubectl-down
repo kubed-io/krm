@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -e
+
+wkdir="${1:-.}"
+
+function destroy_resources() {
+  if [ -f "${wkdir}/Kptfile" ]; then
+    kpt live destroy -
+  else
+    kubectl delete -f -
+  fi
+}
+
+kubectl build ${wkdir} | destroy_resources

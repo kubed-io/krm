@@ -1,0 +1,8 @@
+apiVersion: krm.kubed.io
+kind: AwsCreds
+metadata:
+  name: example-aws-creds
+  namespace: ci
+spec:
+  as: profile
+  profile: carrus-dev

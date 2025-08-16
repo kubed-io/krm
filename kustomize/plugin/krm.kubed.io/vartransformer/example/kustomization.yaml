@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+commonAnnotations:
+  user.home: $(user.home)
+commonLabels:
+  user: $(whoami)
+resources:
+- svc.yaml
+- conf.yaml
+transformers:
+- vars.yaml
+configMapGenerator:
+- name: tester-config
+  behavior: merge
+  literals:
+  - the_message=$(message)
+  - there are=$(how_many)
+  files:
+  - test.txt
+generatorOptions:
+  disableNameSuffixHash: true
+replacements:
+- source:
+    kind: Service
+    fieldPath: metadata.labels.domain
+  targets:
+  - select:
+      kind: ConfigMap
+      name: tester-config
+    fieldPaths:
+    - data.website
+    options:
+      create: true

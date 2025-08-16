@@ -1,0 +1,28 @@
+apiVersion: krm.kubed.io
+kind: VarTransformer
+metadata:
+  name: test-variables
+vars:
+- name: message
+  value: hello world
+- name: how_many
+  value: 20
+- name: is_cool
+  value: true
+- name: whoami
+  valueFrom:
+    env: USER
+  
+- name: user.home
+  valueFrom:
+    env: HOME
+
+- name: the_ip
+  valueFrom:
+    liveRef:
+      name: svc/kubernetes
+      fieldPath: .spec.clusterIP
+
+# multi line value with spaces in name
+- name: fancy message
+  value: no multi line allowed in VarTransformer

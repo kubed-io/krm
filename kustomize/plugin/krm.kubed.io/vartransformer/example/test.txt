@@ -1,0 +1,4 @@
+The user named $(whoami)
+
+said the following: $(fancy message)
+

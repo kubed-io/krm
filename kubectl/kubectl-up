@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -e
+
+wkdir="${1:-.}"
+
+function apply_resources() {
+  if [ -f "${wkdir}/Kptfile" ]; then
+    kpt live apply -
+  else
+    kubectl apply -f -
+  fi
+}
+
+kubectl build ${wkdir} | apply_resources

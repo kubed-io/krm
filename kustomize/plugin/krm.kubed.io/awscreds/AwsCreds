@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+set -e
+
+awsProfile=$(yq e '.spec.profile // "default"' $1)
+
+function getAwsVal() {
+  aws configure get "$1" --profile $awsProfile
+}
+function fail_on_error() {
+    RED="\033[0;31m"
+    echo -e "${RED}ERROR: ${1}${RED}" >&2
+    exit 1
+}
+function validate_variable() {
+    if [ -z "${!1}" ]; then
+        fail_on_error $2
+    fi
+}
+
+asErr="The property spec.as is not set correctly. Accepted values are env, profile, or both"
+as=$(yq e '.spec.as' $1)
+validate_variable as $asErr
+
+envData=""
+profileData=""
+
+if [ "$as" == "env" -o "$as" == "both" ]; then
+envData=$(cat <<EOF
+  AWS_ACCESS_KEY_ID: "$(printf '%s' $(getAwsVal aws_access_key_id) | base64)"
+  AWS_SECRET_ACCESS_KEY: "$(printf '%s' $(getAwsVal aws_secret_access_key) | base64)"
+  AWS_REGION: "$(printf '%s' $(getAwsVal region) | base64)"
+EOF
+)
+fi
+if [ "$as" = "profile" -o "$as" = "both" ]; then
+profileRaw=$(cat <<EOF
+[default]
+\nregion = $(getAwsVal region)
+\naws_access_key_id = $(getAwsVal aws_access_key_id)
+\naws_secret_access_key = $(getAwsVal aws_secret_access_key)
+EOF
+)
+profileData=$(cat <<EOF
+  config: $(echo -e $profileRaw | base64)
+EOF
+)
+fi
+
+ns=$(yq e '.metadata.namespace' $1)
+name=$(yq e '.metadata.name' $1)
+nsYaml=""
+if [ ! -z "$ns" ]; then
+nsYaml="namespace: $ns"
+fi
+
+cat <<EOF
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: $name
+  $nsYaml
+data:
+$envData
+$profileData
+EOF

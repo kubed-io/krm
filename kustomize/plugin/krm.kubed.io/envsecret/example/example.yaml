@@ -1,0 +1,7 @@
+apiVersion: krm.kubed.io
+kind: EnvSecret
+metadata:
+  name: test-secret
+variables:
+- HOME
+- XDG_CONFIG_HOME

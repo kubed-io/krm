@@ -1,0 +1,7 @@
+apiVersion: mmsg
+kind: Htpasswd
+metadata:
+  name: example-htpasswd
+auth:
+  username: foo
+  password: 123passwd!
