@@ -2,13 +2,14 @@
 set -e
 
 wkdir="${1:-.}"
+shift
 
 function apply_resources() {
   if [ -f "${wkdir}/Kptfile" ]; then
-    kpt live apply -
+    kpt live apply - $@
   else
-    kubectl apply -f -
+    kubectl apply -f - $@
   fi
 }
 
-kubectl build ${wkdir} | apply_resources
+kubectl build ${wkdir} | apply_resources $@
