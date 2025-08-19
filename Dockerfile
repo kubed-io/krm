@@ -14,7 +14,10 @@ WORKDIR ${WORKDIR}
 ENV KUBECONFIG=${WORKDIR}/.kube/config \
     XDG_CONFIG_HOME=${WORKDIR} \
     ENABLE_ALPHA_PLUGINS="true" \
-    PATH="${WORKDIR}/.krew/bin:${WORKDIR}/kubectl:$PATH"
+    PATH="${WORKDIR}/.krew/bin:${WORKDIR}/kubectl:$PATH" \
+    HELM_CACHE_HOME=${WORKDIR}/helm/cache \
+    HELM_CONFIG_HOME=${WORKDIR}/helm/config \
+    HELM_DATA_HOME=${WORKDIR}/helm/data
 
 COPY ./kubectl ./kubectl 
 COPY ./kustomize ./kustomize
@@ -26,7 +29,8 @@ RUN apk --no-cache --update add \
 RUN <<EOF
 addgroup -g 1000 krm
 adduser -u 1000 -G krm -h ${WORKDIR} -s /bin/bash -D -S krm
-mkdir -p "${WORKDIR}" "${WORKDIR}/.kube" "${WORKDIR}/.krew" "${WORKDIR}/tmp"
+mkdir -p "${WORKDIR}" "${WORKDIR}/.kube" "${WORKDIR}/.krew" "${WORKDIR}/tmp" \
+    "${WORKDIR}/helm" "${WORKDIR}/helm/cache" "${WORKDIR}/helm/data" "${WORKDIR}/helm/config"
 chown -R krm:krm ${WORKDIR}
 
 addgroup -g 983 docker

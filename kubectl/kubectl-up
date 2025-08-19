@@ -1,15 +1,48 @@
 #!/usr/bin/env bash
 set -e
 
-wkdir="${1:-.}"
+EXTRA_ARGS=()
+APPLY_CMD=()
+PLAN=false
+APP_KUSTOMIZE=false
+APP_NAME=""
+APP_NAMESPACE=""
+APP_DIR="${1}"
+APP_INFILE="$APP_DIR"
 shift
 
-function apply_resources() {
-  if [ -f "${wkdir}/Kptfile" ]; then
-    kpt live apply - $@
-  else
-    kubectl apply -f - $@
-  fi
-}
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --plan) PLAN=true; shift ;;
+    --name) APP_NAME="$2"; shift 2 ;;
+    --namespace) APP_NAMESPACE="$2"; shift 2 ;;
+    --applyset) APP_NAME="$2"; shift 2 ;;
+    *) EXTRA_ARGS+=("$1"); shift ;;
+  esac
+done
 
-kubectl build ${wkdir} | apply_resources $@
+if [ -f "${APP_DIR}/kustomization.yaml" ]; then
+  APP_KUSTOMIZE=true
+  APP_INFILE="-"
+  readarray -t app_vals < <(yq -r '.metadata.name, .namespace' "${APP_DIR}/kustomization.yaml")
+  APP_NAME=${APP_NAME:-"${app_vals[0]}"}
+  APP_NAMESPACE=${APP_NAMESPACE:-"${app_vals[1]}"}
+fi
+
+if [ -f "${APP_DIR}/Kptfile" ]; then
+  APPLY_CMD+=(kpt live apply - "${EXTRA_ARGS[@]}")
+else
+  APPLY_CMD+=(kubectl apply -f ${APP_INFILE} --prune --applyset ${APP_NAME} --namespace ${APP_NAMESPACE} "${EXTRA_ARGS[@]}")
+fi
+
+# if plan is true we'll replace the whole command with diff
+if [ "${PLAN}" = true ]; then
+  APPLY_CMD=(kubectl diff --prune -f ${APP_INFILE} "${EXTRA_ARGS[@]}")
+fi
+
+# app kpt is true and kustomize is true then:
+if [ "${APP_KUSTOMIZE}" = true ]; then
+  kubectl build "${APP_DIR}" | ${APPLY_CMD[@]}
+else
+  ${APPLY_CMD[@]}
+fi
