@@ -24,6 +24,7 @@ services:
       kubed.io/category: iac
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
+    - helm_data:/workspace/helm
     - ./examples:/workspace/examples:Z
     environment:
       COMPOSE_IGNORE_ORPHANS: 'true'
@@ -34,3 +35,6 @@ services:
     command:
     - -f
     - /dev/null
+
+volumes:
+  helm_data:
