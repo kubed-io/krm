@@ -56,6 +56,7 @@ COPY --from=krm \
     /usr/local/bin/kustomize \
     /usr/local/bin/kubectl-krew \
     /usr/local/bin/kubectl-kompose \
+    /usr/local/bin/yq \
     /usr/local/bin/
 
 RUN <<EOF 
