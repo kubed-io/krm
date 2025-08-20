@@ -61,7 +61,7 @@ COPY --from=krm \
 
 RUN <<EOF 
 export DEBIAN_FRONTEND=noninteractive && apt-get update
-apt-get -y install --no-install-recommends direnv yq
+apt-get -y install --no-install-recommends direnv
 apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/library-scripts 
 mkdir -p "${HOME}/.kube" "${HOME}/.krew" "${HOME}/kustomize" "${HOME}/tmp"
 EOF
