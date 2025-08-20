@@ -1,0 +1,20 @@
+apiVersion: krm.kubed.io
+kind: Kompose
+metadata:
+  name: kompose-example
+  annotations: {}
+spec:
+  # files:
+  # - docker-compose.yml
+
+  # optional, this can also be set in compose
+  # replicas: 3 
+  
+  # optional, default is deployment
+  controller: deployment #  (deployment | daemonSet | replicationController)
+
+  # optional, default is kubernetes
+  provider: kubernetes # or openshift
+
+  # optional, default is true
+  with-kompose-annotation: true

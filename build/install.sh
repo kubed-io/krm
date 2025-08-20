@@ -16,6 +16,10 @@ mv tmp/${KREW} /usr/local/bin/kubectl-krew
 echo "Install Kompose"
 curl -L "https://github.com/kubernetes/kompose/releases/download/${KOMPOSE_VERSION}/kompose-linux-${ARCH}" -o /usr/local/bin/kubectl-kompose
 
+echo "Install YQ"
+curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${ARCH}" -o /usr/local/bin/yq
+chmod +x /usr/local/bin/yq
+
 chmod +x /usr/local/bin/kubectl-*
 
 PLUGIN_DIR="${WORKDIR}/kustomize/plugin/krm.kubed.io"

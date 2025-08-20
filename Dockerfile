@@ -2,7 +2,8 @@ FROM alpine:latest AS krm
 
 ARG KUSTOMIZE_VERSION=v5.7.1 \
     KREW_VERSION=v0.4.5 \
-    KOMPOSE_VERSION=v1.36.0
+    KOMPOSE_VERSION=v1.36.0 \
+    YQ_VERSION=v4.47.1
 
 ARG TARGETPLATFORM \
     BUILDPLATFORM
@@ -24,7 +25,7 @@ COPY ./kustomize ./kustomize
 COPY ./build ./build
 
 RUN apk --no-cache --update add \
-    curl git gettext bash kubectl helm yq fzf docker-cli docker-compose
+    curl git gettext bash kubectl helm fzf docker-cli docker-compose
 
 RUN <<EOF
 addgroup -g 1000 krm

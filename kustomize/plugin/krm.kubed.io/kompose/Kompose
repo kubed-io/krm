@@ -14,12 +14,12 @@ function fail_on_error() {
 }
 
 function hasArg() {
-   echo "$res" | yq e '.spec | has("'$1'")' -
+   echo "$res" | yq '.spec | has("'$1'")' -
 }
 
 function addArg() {
    if [ "$(hasArg $1)" == 'true' ]; then
-      komposeArgs+=("--$1=$(echo "$res" | yq e '.spec.'$1'' -)")
+      komposeArgs+=("--$1=$(echo "$res" | yq '.spec.'$1'' -)")
    fi
 }
 
@@ -30,19 +30,18 @@ addArg "provider"
 addArg "with-kompose-annotation"
 
 if [ "$(hasArg 'files')" != 'true' ]; then
-   res="$(echo "$res" | yq e '.spec.files[0] = "docker-compose.yml"' -)"
+   res="$(echo "$res" | yq '.spec.files[0] = "docker-compose.yaml"' -)"
 fi
-fLength=$(echo "$res" | yq e '.spec.files | length' -)
+fLength=$(echo "$res" | yq '.spec.files | length' -)
 for (( i=0; i<$fLength; i++ ))
 do
-   f=$(echo "$res" | yq e '.spec.files['$i']' -)
+   f=$(echo "$res" | yq '.spec.files['$i']' -)
    file="${wkdir}/${f}"
    if [ ! -f "$file" ]; then
       fail_on_error "The file does not exist: $file \n At least one docker-compose is required"
    fi
    files+=(-f "$file")
 done
-
 
 kompose convert \
    "${komposeArgs[@]}" \
