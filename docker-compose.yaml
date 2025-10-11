@@ -24,7 +24,7 @@ services:
       kubed.io/category: iac
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
-    - helm_data:/workspace/helm
+    - helm_data:/kubed/.helm
     - ./examples:/workspace/examples:Z
     environment:
       COMPOSE_IGNORE_ORPHANS: 'true'
@@ -35,6 +35,37 @@ services:
     command:
     - -f
     - /dev/null
+
+  coderserver:
+    image: kubed/krm:codeserver
+    container_name: krm-coderserver
+    build:
+      target: codeserver
+      tags:
+      - kubed/krm:codeserver
+      - kubed/krm:codeserver-${GIT_SHA:-latest}
+      - kubed/krm:codeserver-${GIT_REF:-latest}
+      - kubed/krm:codeserver-${GIT_TAG:-latest}
+      x-bake:
+        platforms:
+        - linux/amd64
+        - linux/arm64
+        cache-to: type=gha,mode=max,scope=kubed-codeserver
+        cache-from: type=gha,scope=kubed-codeserver
+    restart: no
+    tty: true
+    stdin_open: true
+    labels:
+      kubed.io/type: codeserver
+      kubed.io/category: ide
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - helm_data:/kubed/.helm
+    - ./examples:/workspace/examples:Z
+    environment:
+      COMPOSE_IGNORE_ORPHANS: 'true'
+      COMPOSE_PROJECT_NAME: kubed-codeserver
+      KUBECONFIG: $HOME/.kube/config
 
 volumes:
   helm_data:

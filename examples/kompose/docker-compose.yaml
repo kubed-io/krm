@@ -13,8 +13,8 @@ services:
     - web:/usr/share/nginx/html:Z
     tmpfs:
     - /run
-    deploy:
-      replicas: 10
+    # deploy:
+    #   replicas: 10
     ports: 
     - target: 80
       published: 8080

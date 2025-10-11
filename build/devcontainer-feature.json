@@ -1,0 +1,13 @@
+{
+    "name": "KRM Toolset",
+    "id": "krm",
+    "version": "1.0.0",
+    "description": "KRM toolset installation",
+    "options": {
+        "installDir": {
+            "type": "string",
+            "default": "/usr/local/bin",
+            "description": "Directory to install binaries."
+        }
+    }
+}

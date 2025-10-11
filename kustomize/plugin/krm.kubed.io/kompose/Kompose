@@ -43,7 +43,7 @@ do
    files+=(-f "$file")
 done
 
-kompose convert \
+kubectl-kompose convert \
    "${komposeArgs[@]}" \
    --stdout "${files[@]}" \
    | yq '.items[] | splitDoc' -

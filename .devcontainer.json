@@ -21,14 +21,14 @@
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
-		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
-		"ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {}
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+			"moby": false
+		}
 	},
 
 	"containerEnv": {
-		"SSH_AUTH_SOCK": "/home/vscode/.1password/agent.sock",
 		"KUBECONFIG": "/home/vscode/.kube/config",
-		"XDG_CONFIG_HOME": "/workspaces/krm"
+		"XDG_CONFIG_HOME": "/kubed"
 	},
 	"remoteEnv": {
 		"PATH": "${containerEnv:PATH}:/workspaces/krm/kubectl"
