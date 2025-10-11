@@ -84,22 +84,17 @@ USER vscode
 FROM codercom/code-server:latest AS codeserver 
 
 ARG TARGETPLATFORM="linux/amd64" \
-    BUILDPLATFORM="linux/amd64"
+    BUILDPLATFORM="linux/amd64" \
+    INSTALLDIR="/kubed/bin"
+
+USER root
 
 COPY ./build ./build
-
-ENV KUBECONFIG=${WORKDIR}/.kube/config \
-    XDG_CONFIG_HOME=${WORKDIR} \
-    ENABLE_ALPHA_PLUGINS="true" \
-    PATH="${WORKDIR}/.krew/bin:${WORKDIR}/bin:$PATH" \
-    HELM_CACHE_HOME=${WORKDIR}/.helm/cache \
-    HELM_CONFIG_HOME=${WORKDIR}/.helm/config \
-    HELM_DATA_HOME=${WORKDIR}/.helm/data
 
 RUN <<EOF 
 
 # make some dirs 
-mkdir -p /kubed /home/coder/.local/share/code-server
+mkdir -p /kubed /kubed/code-server /home/coder/.local/share/code-server
 chown -R coder:coder /kubed /home/coder/.local/share/code-server
 
 # add coder to docker group
@@ -110,4 +105,21 @@ usermod -aG docker coder
 chmod +x ./build/*
 ./build/dev-install.sh direnv fzf 1password-cli docker-ce-cli
 ./build/install.sh
+
+# update the bashrc
+cat <<EOT >> /home/coder/.bashrc
+
+export PATH="/kubed/.krew/bin:/kubed/bin:\$PATH"
+
+EOT
 EOF
+
+USER coder 
+
+ENV KUBECONFIG=/kubed/.kube/config \
+    XDG_CONFIG_HOME=/kubed \
+    ENABLE_ALPHA_PLUGINS="true" \
+    PATH="/kubed/.krew/bin:/kubed/bin:$PATH" \
+    HELM_CACHE_HOME=/kubed/.helm/cache \
+    HELM_CONFIG_HOME=/kubed/.helm/config \
+    HELM_DATA_HOME=/kubed/.helm/data

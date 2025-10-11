@@ -36,9 +36,9 @@ services:
     - -f
     - /dev/null
 
-  coderserver:
+  codeserver:
     image: kubed/krm:codeserver
-    container_name: krm-coderserver
+    container_name: krm-codeserver
     build:
       target: codeserver
       tags:
@@ -55,17 +55,21 @@ services:
     restart: no
     tty: true
     stdin_open: true
+    user: coder
     labels:
       kubed.io/type: codeserver
       kubed.io/category: ide
+    ports:
+    - 8088:8080
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     - helm_data:/kubed/.helm
     - ./examples:/workspace/examples:Z
+    - $HOME/.kube:/kubed/.kube:Z
     environment:
       COMPOSE_IGNORE_ORPHANS: 'true'
-      COMPOSE_PROJECT_NAME: kubed-codeserver
-      KUBECONFIG: $HOME/.kube/config
+      COMPOSE_PROJECT_NAME: kubed-krm
+      KUBECONFIG: /kubed/.kube/config
 
 volumes:
   helm_data:
