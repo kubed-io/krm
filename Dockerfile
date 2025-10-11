@@ -9,7 +9,7 @@ ARG TARGETPLATFORM \
     BUILDPLATFORM
 
 ARG WORKDIR=/kubed \
-    INSTALL_DIR=/kubed/bin
+    INSTALLDIR=/kubed/bin
 
 WORKDIR ${WORKDIR}
 
