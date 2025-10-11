@@ -20,6 +20,11 @@ else
   OPENVPN_ENABLED="false"
 fi
 
+# make sure prerequisites are installed
+apt-get update
+apt-get install -y --no-install-recommends \
+  apt-transport-https gpg lsb-release curl ca-certificates
+
 # openvpn client setup
 if [ "${OPENVPN_ENABLED}" = "true" ]; then
 	# Remove the OPENVPN_CONFIG variable since we don't need it after is written to a file

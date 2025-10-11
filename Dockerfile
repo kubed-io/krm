@@ -89,7 +89,8 @@ ARG TARGETPLATFORM="linux/amd64" \
 
 USER root
 
-COPY ./build ./build
+# COPY ./build ./build
+COPY --from=krm --chown=coder:coder /kubed /kubed
 
 RUN <<EOF 
 
@@ -102,9 +103,7 @@ groupadd -g 983 docker
 usermod -aG docker coder
 
 # install tools
-chmod +x ./build/*
-./build/dev-install.sh direnv fzf 1password-cli docker-ce-cli
-./build/install.sh
+/kubed/build/dev-install.sh direnv fzf 1password-cli docker-ce-cli
 
 # update the bashrc
 cat <<EOT >> /home/coder/.bashrc
