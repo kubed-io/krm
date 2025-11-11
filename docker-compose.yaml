@@ -70,6 +70,7 @@ services:
       COMPOSE_IGNORE_ORPHANS: 'true'
       COMPOSE_PROJECT_NAME: kubed-krm
       KUBECONFIG: /kubed/.kube/config
+    command: ["--auth", "none"]
 
 volumes:
   helm_data:

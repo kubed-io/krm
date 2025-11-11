@@ -57,23 +57,21 @@ ENTRYPOINT ["kubectl"]
 # docs: https://github.com/microsoft/vscode-dev-containers/blob/main/containers/python-3/README.md
 # Makes the dev container environment
 ##
-FROM mcr.microsoft.com/vscode/devcontainers/base:ubuntu AS dev
+FROM kubed/devcontainers:latest AS dev
 
 ARG NODE_VERSION="none" \
     TARGETPLATFORM="linux/amd64" \
-    BUILDPLATFORM="linux/amd64"
+    BUILDPLATFORM="linux/amd64" \
+    INSTALLDIR="/kubed/bin"
 
 USER root
 
-COPY ./build /opt/tmp-build
+COPY ./build /kubed/build
 
 RUN <<EOF 
-mkdir /kubed 
 chown -R vscode:vscode /kubed
-chmod +x /opt/tmp-build/*
-export WORKDIR=/opt/tmp-build 
-/opt/tmp-build/install.sh
-/opt/tmp-build/dev-install.sh direnv fzf 1password-cli
+export WORKDIR=/kubed/build
+/kubed/build/install.sh
 EOF
 
 USER vscode
@@ -81,7 +79,7 @@ USER vscode
 ## 
 # Now codeserver version as well
 ##
-FROM codercom/code-server:latest AS codeserver 
+FROM kubed/devcontainers:codeserver AS codeserver 
 
 ARG TARGETPLATFORM="linux/amd64" \
     BUILDPLATFORM="linux/amd64" \
@@ -90,21 +88,9 @@ ARG TARGETPLATFORM="linux/amd64" \
 USER root
 
 # COPY ./build ./build
-COPY --from=krm --chown=coder:coder /kubed /kubed
+COPY --from=krm --chown=coder:coder /kubed/bin /kubed/bin
 
 RUN <<EOF 
-
-# make some dirs 
-mkdir -p /kubed /kubed/code-server /home/coder/.local/share/code-server
-chown -R coder:coder /kubed /home/coder/.local/share/code-server
-
-# add coder to docker group
-groupadd -g 983 docker
-usermod -aG docker coder
-
-# install tools
-/kubed/build/dev-install.sh direnv fzf 1password-cli docker-ce-cli
-
 # update the bashrc
 cat <<EOT >> /home/coder/.bashrc
 

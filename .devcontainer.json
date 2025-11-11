@@ -10,11 +10,11 @@
 	// "dockerComposeFile": [
 	// 	"docker-compose.yaml"
 	// ],
-	
-	"build": {
-		"dockerfile": "Dockerfile",
-		"target": "dev"
-	},
+	"image": "kubed/devcontainers:latest",
+	// "build": {
+	// 	"dockerfile": "Dockerfile",
+	// 	"target": "dev"
+	// },
 	// The optional 'workspaceFolder' property is the path VS Code should open by default when
 	// connected. This is typically a file mount in .devcontainer/docker-compose.yml
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
@@ -34,14 +34,16 @@
 		"PATH": "${containerEnv:PATH}:/workspaces/krm/kubectl"
 	},
 
-	"mounts": [
-		// "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
-		"source=${env:HOME}/.1password/agent.sock,target=/home/vscode/.1password/agent.sock,type=bind",
-		"source=${env:HOME}/.kube,target=/home/vscode/.kube,type=bind",
-		"source=${env:HOME}/.ssh,target=/home/vscode/.ssh,type=bind",
-		"source=${env:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind",
-		"source=/opt/1Password,target=/opt/1Password,type=bind"
-	],
+	// "mounts": [
+	// 	// "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+	// 	"source=${env:HOME}/.1password/agent.sock,target=/home/vscode/.1password/agent.sock,type=bind",
+	// 	"source=${env:HOME}/.kube,target=/home/vscode/.kube,type=bind",
+	// 	"source=${env:HOME}/.ssh,target=/home/vscode/.ssh,type=bind",
+	// 	"source=${env:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind",
+	// 	"source=/opt/1Password,target=/opt/1Password,type=bind"
+	// ],
+
+	"onCreateCommand": "/kubed/scripts/on-create.sh",
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
