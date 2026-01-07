@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.0.10] - 2026-01-07
+
 ## [0.0.9] - 2025-11-11
 
 - update versions of vscode and codeserver
