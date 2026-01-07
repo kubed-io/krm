@@ -47,6 +47,16 @@ jobs:
         version: ${{ inputs.action }}
         push: ${{ inputs.push }}
 
+    - name: Build Image
+      uses: kubed-io/actions/build-image@main
+      env:
+        GIT_TAG: ${{ steps.bump.outputs.tag }}
+      with: 
+        push: ${{ inputs.push }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        repository: kubed/krm
+
     - name: Registry URL
       id: registry
       env:
