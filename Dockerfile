@@ -95,6 +95,13 @@ RUN <<EOF
 cat <<EOT >> /home/coder/.bashrc
 
 export PATH="/kubed/.krew/bin:/kubed/bin:\$PATH"
+export KUBECTL_APPLYSET="true"
+
+EOT
+cat <<EOT >> /home/coder/.profile
+
+export PATH="/kubed/.krew/bin:/kubed/bin:\$PATH"
+export KUBECTL_APPLYSET="true"
 
 EOT
 EOF
