@@ -1,0 +1,11 @@
+apiVersion: krm.kubed.io
+kind: Package
+metadata:
+  name: hello
+  namespace: flow
+spec:
+  codePath: hello.py
+  functionName: main
+  environment:
+    name: python
+    namespace: flow

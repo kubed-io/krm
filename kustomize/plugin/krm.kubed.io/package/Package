@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+# Get the working directory (where kubectl/kustomize was invoked)
+wkdir="$(pwd)"
+
+# Read the input Package resource
+res="$(cat $1)"
+
+# Helper function to get properties using yq
+function getProp() {
+    yaml=$1
+    shift
+    echo "$yaml" | yq "$@" -
+}
+
+# Extract metadata
+name=$(getProp "$res" '.metadata.name')
+namespace=$(getProp "$res" '.metadata.namespace // "default"')
+
+# Extract spec fields
+codePath=$(getProp "$res" '.spec.codePath')
+functionName=$(getProp "$res" '.spec.functionName // "main"')
+environmentName=$(getProp "$res" '.spec.environment.name')
+environmentNamespace=$(getProp "$res" '.spec.environment.namespace // .metadata.namespace // "default"')
+
+# Optional fields for advanced Fission configuration
+buildCmd=$(getProp "$res" '.spec.buildcmd // ""')
+sourceArchive=$(getProp "$res" '.spec.source // ""')
+
+# Validate required fields
+if [ -z "$codePath" ] || [ "$codePath" = "null" ]; then
+    echo "Error: spec.codePath is required" >&2
+    exit 1
+fi
+
+if [ -z "$environmentName" ] || [ "$environmentName" = "null" ]; then
+    echo "Error: spec.environment.name is required" >&2
+    exit 1
+fi
+
+# Resolve the code file path relative to the working directory
+codeFile="${wkdir}/${codePath}"
+
+if [ ! -f "$codeFile" ]; then
+    echo "Error: Code file not found: $codeFile" >&2
+    exit 1
+fi
+
+# Create a temporary directory for building the package
+TMPDIR=$(mktemp -d)
+trap "rm -rf $TMPDIR" EXIT
+
+# Determine the filename for the zip archive
+baseFileName=$(basename "$codeFile")
+fileNameWithoutExt="${baseFileName%.*}"
+
+# Copy the code file to temp directory
+cp "$codeFile" "$TMPDIR/"
+
+# Create a zip archive
+cd "$TMPDIR"
+zip -q package.zip "$baseFileName"
+
+# Base64 encode the zip file
+ENCODED=$(base64 -w0 < package.zip)
+
+# Build the namespace field if present
+nsField=""
+if [ "$namespace" != "default" ] && [ ! -z "$namespace" ] && [ "$namespace" != "null" ]; then
+    nsField="namespace: $namespace"
+fi
+
+# Build optional fields
+buildCmdField=""
+if [ ! -z "$buildCmd" ] && [ "$buildCmd" != "null" ]; then
+    buildCmdField="buildcmd: \"$buildCmd\""
+fi
+
+sourceField=""
+if [ ! -z "$sourceArchive" ] && [ "$sourceArchive" != "null" ]; then
+    sourceField=$(cat <<EOF
+  source:
+    type: url
+    url: $sourceArchive
+EOF
+)
+fi
+
+# Output the Fission Package and Function resources
+cat <<EOF
+apiVersion: fission.io/v1
+kind: Package
+metadata:
+  name: $name
+  $nsField
+spec:
+  environment:
+    name: $environmentName
+    namespace: $environmentNamespace
+  deployment:
+    type: literal
+    literal: $ENCODED
+  $buildCmdField
+$sourceField
+---
+apiVersion: fission.io/v1
+kind: Function
+metadata:
+  name: $name
+  $nsField
+spec:
+  environment:
+    name: $environmentName
+    namespace: $environmentNamespace
+  package:
+    packageref:
+      name: $name
+      namespace: $namespace
+    functionName: ${fileNameWithoutExt}.${functionName}
+  InvokeStrategy:
+    StrategyType: execution
+    ExecutionStrategy:
+      ExecutorType: poolmgr
+EOF

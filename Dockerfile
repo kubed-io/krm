@@ -89,6 +89,7 @@ USER root
 
 # COPY ./build ./build
 COPY --from=krm --chown=coder:coder /kubed/bin /kubed/bin
+COPY --from=krm --chown=coder:coder /kubed/kustomize /kubed/kustomize
 
 RUN <<EOF 
 # update the bashrc
