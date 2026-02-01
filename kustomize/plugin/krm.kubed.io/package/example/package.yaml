@@ -5,7 +5,6 @@ metadata:
   namespace: flow
 spec:
   codePath: hello.py
-  functionName: main
   environment:
     name: python
     namespace: flow

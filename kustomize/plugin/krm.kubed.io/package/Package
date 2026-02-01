@@ -20,7 +20,6 @@ namespace=$(getProp "$res" '.metadata.namespace // "default"')
 
 # Extract spec fields
 codePath=$(getProp "$res" '.spec.codePath')
-functionName=$(getProp "$res" '.spec.functionName // "main"')
 environmentName=$(getProp "$res" '.spec.environment.name')
 environmentNamespace=$(getProp "$res" '.spec.environment.namespace // .metadata.namespace // "default"')
 
@@ -87,7 +86,7 @@ EOF
 )
 fi
 
-# Output the Fission Package and Function resources
+# Output the Fission Package resource
 cat <<EOF
 apiVersion: fission.io/v1
 kind: Package
@@ -103,23 +102,4 @@ spec:
     literal: $ENCODED
   $buildCmdField
 $sourceField
----
-apiVersion: fission.io/v1
-kind: Function
-metadata:
-  name: $name
-  $nsField
-spec:
-  environment:
-    name: $environmentName
-    namespace: $environmentNamespace
-  package:
-    packageref:
-      name: $name
-      namespace: $namespace
-    functionName: ${fileNameWithoutExt}.${functionName}
-  InvokeStrategy:
-    StrategyType: execution
-    ExecutionStrategy:
-      ExecutorType: poolmgr
 EOF
