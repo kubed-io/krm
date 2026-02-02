@@ -22,10 +22,11 @@ namespace=$(getProp "$res" '.metadata.namespace // "default"')
 codePath=$(getProp "$res" '.spec.codePath')
 environmentName=$(getProp "$res" '.spec.environment.name')
 environmentNamespace=$(getProp "$res" '.spec.environment.namespace // .metadata.namespace // "default"')
+functionName=$(getProp "$res" '.spec.functionName // "main"')
 
-# Optional fields for advanced Fission configuration
+# Optional fields
+buildScript=$(getProp "$res" '.spec.buildScript // ""')
 buildCmd=$(getProp "$res" '.spec.buildcmd // ""')
-sourceArchive=$(getProp "$res" '.spec.source // ""')
 
 # Validate required fields
 if [ -z "$codePath" ] || [ "$codePath" = "null" ]; then
@@ -38,28 +39,61 @@ if [ -z "$environmentName" ] || [ "$environmentName" = "null" ]; then
     exit 1
 fi
 
-# Resolve the code file path relative to the working directory
-codeFile="${wkdir}/${codePath}"
-
-if [ ! -f "$codeFile" ]; then
-    echo "Error: Code file not found: $codeFile" >&2
-    exit 1
-fi
-
 # Create a temporary directory for building the package
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
-# Determine the filename for the zip archive
-baseFileName=$(basename "$codeFile")
-fileNameWithoutExt="${baseFileName%.*}"
+# Handle codePath - can be a single file, glob pattern, or directory
+cd "$wkdir"
 
-# Copy the code file to temp directory
-cp "$codeFile" "$TMPDIR/"
+# Expand the glob pattern and copy files
+fileCount=0
+for pattern in $codePath; do
+    # Use bash glob expansion
+    for file in $pattern; do
+        if [ -f "$file" ]; then
+            # Preserve directory structure relative to wkdir
+            dir=$(dirname "$file")
+            if [ "$dir" != "." ]; then
+                mkdir -p "$TMPDIR/$dir"
+            fi
+            cp "$file" "$TMPDIR/$file"
+            ((fileCount++)) || true
+        elif [ -d "$file" ]; then
+            # Copy entire directory
+            cp -r "$file" "$TMPDIR/"
+            ((fileCount++)) || true
+        fi
+    done
+done
+
+if [ $fileCount -eq 0 ]; then
+    echo "Error: No files found matching codePath: $codePath" >&2
+    exit 1
+fi
+
+# Determine if this is a source package (needs building) or deployment package
+isSourcePackage=false
+
+# Handle build script if specified
+if [ ! -z "$buildScript" ] && [ "$buildScript" != "null" ]; then
+    if [ -f "$wkdir/$buildScript" ]; then
+        cp "$wkdir/$buildScript" "$TMPDIR/"
+        chmod +x "$TMPDIR/$(basename "$buildScript")"
+        isSourcePackage=true
+        # If buildcmd not explicitly set, default to the build script
+        if [ -z "$buildCmd" ] || [ "$buildCmd" = "null" ]; then
+            buildCmd="./$(basename "$buildScript")"
+        fi
+    else
+        echo "Error: Build script not found: $wkdir/$buildScript" >&2
+        exit 1
+    fi
+fi
 
 # Create a zip archive
 cd "$TMPDIR"
-zip -q package.zip "$baseFileName"
+zip -qr package.zip .
 
 # Base64 encode the zip file
 ENCODED=$(base64 -w0 < package.zip)
@@ -76,18 +110,27 @@ if [ ! -z "$buildCmd" ] && [ "$buildCmd" != "null" ]; then
     buildCmdField="buildcmd: \"$buildCmd\""
 fi
 
-sourceField=""
-if [ ! -z "$sourceArchive" ] && [ "$sourceArchive" != "null" ]; then
-    sourceField=$(cat <<EOF
-  source:
-    type: url
-    url: $sourceArchive
-EOF
-)
-fi
-
 # Output the Fission Package resource
-cat <<EOF
+# If source package: zip goes to spec.source, deployment is empty
+# If deployment package: zip goes to spec.deployment
+if [ "$isSourcePackage" = true ]; then
+    cat <<EOF
+apiVersion: fission.io/v1
+kind: Package
+metadata:
+  name: $name
+  $nsField
+spec:
+  environment:
+    name: $environmentName
+    namespace: $environmentNamespace
+  source:
+    type: literal
+    literal: $ENCODED
+  $buildCmdField
+EOF
+else
+    cat <<EOF
 apiVersion: fission.io/v1
 kind: Package
 metadata:
@@ -100,6 +143,5 @@ spec:
   deployment:
     type: literal
     literal: $ENCODED
-  $buildCmdField
-$sourceField
 EOF
+fi
