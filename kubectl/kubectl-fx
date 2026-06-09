@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+set -e
+
+# kubectl fx - Fission function utilities
+# Usage: kubectl fx <command> [args]
+
+BUCKET_NAME="${FX_BUCKET:-kellyferrone-functions}"
+
+fx_publish() {
+  local TARGET_DIR="${1:-.}"
+
+  # Resolve to absolute path
+  if [[ "$TARGET_DIR" != /* ]]; then
+    TARGET_DIR="$(pwd)/$TARGET_DIR"
+  fi
+  TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
+
+  # Verify package.yaml exists
+  if [[ ! -f "$TARGET_DIR/package.yaml" ]]; then
+    echo "Error: package.yaml not found in $TARGET_DIR" >&2
+    exit 1
+  fi
+
+  # Extract package name from package.yaml
+  local PACKAGE_NAME=$(yq -r '.metadata.name' "$TARGET_DIR/package.yaml")
+  if [[ -z "$PACKAGE_NAME" || "$PACKAGE_NAME" == "null" ]]; then
+    echo "Error: Could not determine package name from package.yaml" >&2
+    exit 1
+  fi
+
+  # Version based on timestamp
+  local VERSION=$(date -u +%Y%m%d%H%M%S)
+  local ARCHIVE_NAME="${PACKAGE_NAME}-${VERSION}.zip"
+  local TEMP_DIR=$(mktemp -d)
+
+  echo "=== Publishing fission package: $PACKAGE_NAME ==="
+  echo "Directory: $TARGET_DIR"
+
+  # Build list of files to include
+  cd "$TARGET_DIR"
+  local FILES_TO_INCLUDE=()
+
+  # Include all Python files
+  for f in *.py; do
+    [[ -f "$f" ]] && FILES_TO_INCLUDE+=("$f")
+  done
+
+  # Include build.sh if it exists
+  [[ -f "build.sh" ]] && FILES_TO_INCLUDE+=("build.sh")
+
+  # Include requirements.txt if it exists
+  [[ -f "requirements.txt" ]] && FILES_TO_INCLUDE+=("requirements.txt")
+
+  if [[ ${#FILES_TO_INCLUDE[@]} -eq 0 ]]; then
+    echo "Error: No source files found to package" >&2
+    exit 1
+  fi
+
+  echo "Files: ${FILES_TO_INCLUDE[*]}"
+
+  # Create the archive
+  echo "Creating archive..."
+  zip -q "$TEMP_DIR/$ARCHIVE_NAME" "${FILES_TO_INCLUDE[@]}"
+
+  # Calculate checksum
+  local CHECKSUM=$(sha256sum "$TEMP_DIR/$ARCHIVE_NAME" | awk '{print $1}')
+  echo "Version: $VERSION"
+  echo "SHA256: $CHECKSUM"
+
+  # Upload to GCS bucket
+  echo "Uploading to gs://$BUCKET_NAME/$ARCHIVE_NAME..."
+  gsutil cp "$TEMP_DIR/$ARCHIVE_NAME" "gs://$BUCKET_NAME/$ARCHIVE_NAME"
+
+  # Make it publicly readable
+  gsutil acl ch -u AllUsers:R "gs://$BUCKET_NAME/$ARCHIVE_NAME"
+
+  # Get the public URL
+  local PUBLIC_URL="https://storage.googleapis.com/$BUCKET_NAME/$ARCHIVE_NAME"
+
+  # Update package.yaml with new URL and checksum
+  echo "Updating package.yaml..."
+  yq -i ".spec.source.url = \"$PUBLIC_URL\"" "$TARGET_DIR/package.yaml"
+  yq -i ".spec.source.checksum.sum = \"$CHECKSUM\"" "$TARGET_DIR/package.yaml"
+
+  # Cleanup
+  rm -rf "$TEMP_DIR"
+
+  echo ""
+  echo "=== Publish Complete ==="
+  echo "Package: $PACKAGE_NAME"
+  echo "Archive: $PUBLIC_URL"
+  echo "Checksum: $CHECKSUM"
+  echo ""
+  echo "Run 'kubectl up $TARGET_DIR' to deploy."
+}
+
+fx_help() {
+  echo "Usage: kubectl fx <command> [args]"
+  echo ""
+  echo "Commands:"
+  echo "  publish <dir>  Publish function package to GCS bucket"
+  echo ""
+  echo "Examples:"
+  echo "  kubectl fx publish functions/tester-advanced"
+  echo "  kubectl up functions/tester-advanced"
+}
+
+# Main dispatch
+COMMAND="${1:-help}"
+shift 2>/dev/null || true
+
+case "$COMMAND" in
+  publish) fx_publish "$@" ;;
+  help|--help|-h) fx_help ;;
+  *)
+    echo "Unknown command: $COMMAND" >&2
+    fx_help >&2
+    exit 1
+    ;;
+esac

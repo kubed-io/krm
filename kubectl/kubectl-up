@@ -24,15 +24,27 @@ done
 if [ -f "${APP_DIR}/kustomization.yaml" ]; then
   APP_KUSTOMIZE=true
   APP_INFILE="-"
-  readarray -t app_vals < <(yq -r '.metadata.name, .namespace' "${APP_DIR}/kustomization.yaml")
+  readarray -t app_vals < <(yq -r '.metadata.name, .namespace // .metadata.namespace, (.metadata.annotations."kubectl.kubernetes.io/server-side" // "false"), (.metadata.annotations."kubectl.kubernetes.io/apply-set" // "true")' "${APP_DIR}/kustomization.yaml")
   APP_NAME=${APP_NAME:-"${app_vals[0]}"}
   APP_NAMESPACE=${APP_NAMESPACE:-"${app_vals[1]}"}
+  SERVER_SIDE="${app_vals[2]}"
+  USE_APPLYSET="${app_vals[3]}"
 fi
 
 if [ -f "${APP_DIR}/Kptfile" ]; then
   APPLY_CMD+=(kpt live apply - "${EXTRA_ARGS[@]}")
 else
-  APPLY_CMD+=(kubectl apply -f ${APP_INFILE} --prune --applyset ${APP_NAME} --namespace ${APP_NAMESPACE} "${EXTRA_ARGS[@]}")
+  # Add --server-side if annotation is set to true
+  [ "${SERVER_SIDE}" = "true" ] && EXTRA_ARGS+=(--server-side)
+
+  # Build kubectl apply command based on USE_APPLYSET
+  if [ "${USE_APPLYSET}" = "true" ]; then
+    # Use applyset with prune
+    APPLY_CMD+=(kubectl apply -f ${APP_INFILE} --prune --applyset ${APP_NAME} --namespace ${APP_NAMESPACE} "${EXTRA_ARGS[@]}")
+  else
+    # Use simple apply without applyset/prune
+    APPLY_CMD+=(kubectl apply -f ${APP_INFILE} "${EXTRA_ARGS[@]}")
+  fi
 fi
 
 # if plan is true we'll replace the whole command with diff
