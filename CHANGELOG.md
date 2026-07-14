@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- `kubectl plan` is now executable, so `kubectl plan` resolves as a plugin instead of failing with `unknown command "plan"`.
+
 ## [0.0.16] - 2026-07-14
 
 ### Changed
