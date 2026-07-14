@@ -1,0 +1,53 @@
+# Dependabot version updates (security updates are toggled in repo settings,
+# not in this file). One entry per package manager active in the repo.
+#
+# House rules:
+# - Weekly cadence: enough to stay current without spamming the queue.
+# - Grouped minor + patch per ecosystem; majors stay separate for review.
+# - Short cooldown so yanked releases get pulled before they reach us.
+# - Commit prefix is distinct per ecosystem so the merge queue reads cleanly.
+#
+# Docs: https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+version: 2
+updates:
+
+# GitHub Actions: keeps every `uses:` pin across workflows current.
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: weekly
+    day: monday
+  open-pull-requests-limit: 5
+  labels:
+  - dependencies
+  - github-actions
+  commit-message:
+    prefix: ci(deps)
+  cooldown:
+    default-days: 3
+  groups:
+    actions-minor-patch:
+      update-types:
+      - minor
+      - patch
+
+# Docker: tracks base images in the Dockerfile so upstream tool releases
+# surface as a PR. Majors stay separate for deliberate review.
+- package-ecosystem: docker
+  directory: /
+  schedule:
+    interval: weekly
+    day: monday
+  open-pull-requests-limit: 5
+  labels:
+  - dependencies
+  - docker
+  commit-message:
+    prefix: deps(docker)
+  cooldown:
+    default-days: 3
+  groups:
+    docker-minor-patch:
+      update-types:
+      - minor
+      - patch

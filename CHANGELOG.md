@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `kubectl plan` — read-only counterpart to `up`: renders with `build` and server-side-diffs against live (exit 0/1/>1), plus a membership-based applyset prune preview (`--no-prune` to skip); honors `KUBECTL_EXTERNAL_DIFF` (e.g. dyff).
+
+### Removed
+
+- `kubectl up --plan` — superseded by the first-class `kubectl plan` command.
+
 ## [0.0.14] - 2026-06-09
 
 ## [0.0.13] - 2026-06-09
