@@ -6,6 +6,9 @@ name: 🔀 PR
 on:
   pull_request:
     branches: [main]
+    # labeled/unlabeled so applying the `no changelog` label (e.g. Dependabot,
+    # or a late add) re-runs the gate with a fresh payload.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
