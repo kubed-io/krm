@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.0.16] - 2026-07-14
+
 ### Changed
 
 - Dependabot PRs carry a `no changelog` label so they skip the changelog gate.
