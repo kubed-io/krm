@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# kubectl plan — the read-only counterpart to `kubectl up`. Renders an app with
+# `kubectl build` and shows what an `up` would change. Name, namespace and the
+# server-side flag come from kustomization.yaml exactly like `up`/`down`.
+#
+# Two passes, merged into one report:
+#   1. Create/update — `kubectl diff` (server-side dry-run) of the built set.
+#   2. Prune (deletions) — computed manually the way applyset prune works, since
+#      `kubectl diff` has no --applyset flag and its --prune/--selector workaround
+#      both hides create/update and mis-scopes. We list the live applyset members
+#      (objects carrying applyset.kubernetes.io/part-of=<id> across the parent's
+#      recorded group-kinds) and subtract what the build renders, matching by
+#      group/kind + name with the namespace normalized away for cluster-scoped
+#      kinds (kustomize stamps a namespace on them that apply ignores).
+#
+# Exit status: 0 = no changes, 1 = changes (update and/or prune), >1 = error.
+# Pass --no-prune to skip pass 2. Set KUBECTL_EXTERNAL_DIFF (e.g. "dyff between
+# --omit-header") for a nicer diff.
+set -e
+
+EXTRA_ARGS=()
+APP_KUSTOMIZE=false
+APP_NAME=""
+APP_NAMESPACE=""
+SERVER_SIDE=false
+USE_APPLYSET=true
+PRUNE=true
+APP_DIR="${1}"
+APP_INFILE="$APP_DIR"
+shift
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --name) APP_NAME="$2"; shift 2 ;;
+    --namespace) APP_NAMESPACE="$2"; shift 2 ;;
+    --applyset) APP_NAME="$2"; shift 2 ;;
+    --no-prune) PRUNE=false; shift ;;
+    *) EXTRA_ARGS+=("$1"); shift ;;
+  esac
+done
+
+if [ -f "${APP_DIR}/kustomization.yaml" ]; then
+  APP_KUSTOMIZE=true
+  APP_INFILE="-"
+  readarray -t app_vals < <(yq -r '.metadata.name, .namespace // .metadata.namespace, (.metadata.annotations."kubectl.kubernetes.io/server-side" // "false"), (.metadata.annotations."kubectl.kubernetes.io/apply-set" // "true")' "${APP_DIR}/kustomization.yaml")
+  APP_NAME=${APP_NAME:-"${app_vals[0]}"}
+  APP_NAMESPACE=${APP_NAMESPACE:-"${app_vals[1]}"}
+  SERVER_SIDE="${app_vals[2]}"
+  USE_APPLYSET="${app_vals[3]}"
+fi
+
+# Render once so both passes read the same set.
+BUILT="$(mktemp)"
+trap 'rm -f "$BUILT"' EXIT
+if [ "${APP_KUSTOMIZE}" = true ]; then
+  kubectl build "${APP_DIR}" > "$BUILT"
+else
+  cp "${APP_DIR}" "$BUILT"
+fi
+
+# --- Pass 1: create/update -------------------------------------------------
+DIFF_ARGS=(-f "$BUILT")
+[ -n "${APP_NAMESPACE}" ] && DIFF_ARGS+=(--namespace "${APP_NAMESPACE}")
+[ "${SERVER_SIDE}" = "true" ] && DIFF_ARGS+=(--server-side)
+
+set +e
+kubectl diff "${DIFF_ARGS[@]}" "${EXTRA_ARGS[@]}"
+DIFF_RC=$?
+set -e
+[ "$DIFF_RC" -gt 1 ] && exit "$DIFF_RC"   # real error, not just "changes found"
+
+# --- Pass 2: prune (applyset membership − build) ---------------------------
+PRUNE_RC=0
+if [ "${PRUNE}" = true ] && [ "${USE_APPLYSET}" = "true" ] && [ -n "${APP_NAME}" ]; then
+  APPLYSET_ID="$(kubectl get secret "${APP_NAME}" --namespace "${APP_NAMESPACE}" \
+    -o jsonpath='{.metadata.labels.applyset\.kubernetes\.io/id}' 2>/dev/null || true)"
+  if [ -n "${APPLYSET_ID}" ]; then
+    GKS="$(kubectl get secret "${APP_NAME}" --namespace "${APP_NAMESPACE}" \
+      -o jsonpath='{.metadata.annotations.applyset\.kubernetes\.io/contains-group-kinds}' 2>/dev/null || true)"
+
+    # Cluster-scoped "Kind.group" set (key uses group; core kinds have none), so
+    # we can blank the namespace on both sides before comparing identity.
+    declare -A CLUSTER_SCOPED
+    while read -r apiver namespaced kind; do
+      [ -z "$kind" ] && continue
+      if [[ "$apiver" == */* ]]; then grp="${apiver%%/*}"; else grp=""; fi
+      key="${kind}.${grp}"; key="${key%.}"
+      [ "$namespaced" = "false" ] && CLUSTER_SCOPED["$key"]=1
+    done < <(kubectl api-resources --no-headers 2>/dev/null | awk '{print $(NF-2), $(NF-1), $NF}')
+
+    ident() { # kind group namespace -> "kind.group|ns|name-less identity prefix"
+      local kind="$1" grp="$2" ns="$3"
+      local key="${kind}.${grp}"; key="${key%.}"
+      [ -n "${CLUSTER_SCOPED[$key]}" ] && ns=""
+      printf '%s|%s' "$key" "$ns"
+    }
+
+    # Built identities.
+    declare -A BUILT_SET
+    while IFS=$'\t' read -r apiver kind ns name; do
+      [ -z "$name" ] && continue
+      if [[ "$apiver" == */* ]]; then grp="${apiver%%/*}"; else grp=""; fi
+      BUILT_SET["$(ident "$kind" "$grp" "${ns:-$APP_NAMESPACE}")|$name"]=1
+    done < <(yq -r '[.apiVersion, .kind, (.metadata.namespace // ""), .metadata.name] | @tsv' "$BUILT")
+
+    # Live members per group-kind; anything not built is a prune candidate.
+    PRUNES=()
+    IFS=',' read -ra _gks <<<"${GKS}"
+    for gk in "${_gks[@]}"; do
+      [ -z "$gk" ] && continue
+      if [[ "$gk" == *.* ]]; then kind="${gk%%.*}"; grp="${gk#*.}"; else kind="$gk"; grp=""; fi
+      while IFS=$'\t' read -r ns name; do
+        [ -z "$name" ] && continue
+        if [ -z "${BUILT_SET["$(ident "$kind" "$grp" "$ns")|$name"]}" ]; then
+          PRUNES+=("${gk}/${name}${ns:+ -n $ns}")
+        fi
+      done < <(kubectl get "$gk" -A -l "applyset.kubernetes.io/part-of=${APPLYSET_ID}" \
+        -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)
+    done
+
+    if [ "${#PRUNES[@]}" -gt 0 ]; then
+      PRUNE_RC=1
+      echo
+      echo "# Prune — live applyset members not in the build (would be deleted by up):"
+      printf '  - %s\n' "${PRUNES[@]}"
+    fi
+  fi
+fi
+
+if [ "$DIFF_RC" -eq 1 ] || [ "$PRUNE_RC" -eq 1 ]; then
+  exit 1
+fi
+exit 0

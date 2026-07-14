@@ -3,7 +3,6 @@ set -e
 
 EXTRA_ARGS=()
 APPLY_CMD=()
-PLAN=false
 APP_KUSTOMIZE=false
 APP_NAME=""
 APP_NAMESPACE=""
@@ -13,7 +12,6 @@ shift
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --plan) PLAN=true; shift ;;
     --name) APP_NAME="$2"; shift 2 ;;
     --namespace) APP_NAMESPACE="$2"; shift 2 ;;
     --applyset) APP_NAME="$2"; shift 2 ;;
@@ -45,11 +43,6 @@ else
     # Use simple apply without applyset/prune
     APPLY_CMD+=(kubectl apply -f ${APP_INFILE} "${EXTRA_ARGS[@]}")
   fi
-fi
-
-# if plan is true we'll replace the whole command with diff
-if [ "${PLAN}" = true ]; then
-  APPLY_CMD=(kubectl diff --prune -f ${APP_INFILE} "${EXTRA_ARGS[@]}")
 fi
 
 # app kpt is true and kustomize is true then:
