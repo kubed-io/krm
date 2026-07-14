@@ -12,6 +12,10 @@ and this project adheres to
 
 - `kubectl plan` is now executable, so `kubectl plan` resolves as a plugin instead of failing with `unknown command "plan"`.
 
+### Changed
+
+- `kubectl plan` now exits 0 on a clean run even when it finds changes (drift is a successful plan, not a failure), so CI plan jobs no longer show red on drift. The terraform-style detailed code (`0` no changes, `1` changes, `2` error) is now opt-in via `--detailed-exitcode`.
+
 ## [0.0.16] - 2026-07-14
 
 ### Changed

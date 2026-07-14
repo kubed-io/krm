@@ -13,9 +13,12 @@
 #      group/kind + name with the namespace normalized away for cluster-scoped
 #      kinds (kustomize stamps a namespace on them that apply ignores).
 #
-# Exit status: 0 = no changes, 1 = changes (update and/or prune), >1 = error.
-# Pass --no-prune to skip pass 2. Set KUBECTL_EXTERNAL_DIFF (e.g. "dyff between
-# --omit-header") for a nicer diff.
+# Exit status: like `terraform plan`, a plan that runs cleanly exits 0 whether or
+# not it found changes — drift is a successful plan, not a failure. Only a real
+# error (bad build, unreachable cluster, etc.) exits non-zero. Pass
+# --detailed-exitcode for the terraform-style code: 0 = no changes, 1 = changes
+# (update and/or prune), 2 = error. Pass --no-prune to skip pass 2. Set
+# KUBECTL_EXTERNAL_DIFF (e.g. "dyff between --omit-header") for a nicer diff.
 set -e
 
 EXTRA_ARGS=()
@@ -25,6 +28,7 @@ APP_NAMESPACE=""
 SERVER_SIDE=false
 USE_APPLYSET=true
 PRUNE=true
+DETAILED_EXITCODE=false
 APP_DIR="${1}"
 APP_INFILE="$APP_DIR"
 shift
@@ -35,6 +39,7 @@ while [[ $# -gt 0 ]]; do
     --namespace) APP_NAMESPACE="$2"; shift 2 ;;
     --applyset) APP_NAME="$2"; shift 2 ;;
     --no-prune) PRUNE=false; shift ;;
+    --detailed-exitcode) DETAILED_EXITCODE=true; shift ;;
     *) EXTRA_ARGS+=("$1"); shift ;;
   esac
 done
@@ -67,7 +72,7 @@ set +e
 kubectl diff "${DIFF_ARGS[@]}" "${EXTRA_ARGS[@]}"
 DIFF_RC=$?
 set -e
-[ "$DIFF_RC" -gt 1 ] && exit "$DIFF_RC"   # real error, not just "changes found"
+[ "$DIFF_RC" -gt 1 ] && exit 2   # real error, not just "changes found"
 
 # --- Pass 2: prune (applyset membership − build) ---------------------------
 PRUNE_RC=0
@@ -127,7 +132,9 @@ if [ "${PRUNE}" = true ] && [ "${USE_APPLYSET}" = "true" ] && [ -n "${APP_NAME}"
   fi
 fi
 
-if [ "$DIFF_RC" -eq 1 ] || [ "$PRUNE_RC" -eq 1 ]; then
+# A clean run is a success (exit 0), even with changes — unless the caller opts
+# into terraform-style detailed codes, where 1 signals "changes found".
+if [ "${DETAILED_EXITCODE}" = true ] && { [ "$DIFF_RC" -eq 1 ] || [ "$PRUNE_RC" -eq 1 ]; }; then
   exit 1
 fi
 exit 0
