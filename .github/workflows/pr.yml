@@ -30,6 +30,6 @@ jobs:
         configuration-path: .github/assign.yml
 
     - name: Make sure Changelog is updated
-      uses: tarides/changelog-check-action@v3
+      uses: tarides/changelog-check-action@v4
       with:
         changelog: CHANGELOG.md
