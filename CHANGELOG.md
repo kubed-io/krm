@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.0.21] - 2026-10-06
+
 ### Fixed
 
 - `kubectl plan` no longer shows every object losing its `applyset.kubernetes.io/part-of` label, so an app that is in sync plans clean.
