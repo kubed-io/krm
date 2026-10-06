@@ -83,7 +83,8 @@ FROM kubed/devcontainers:codeserver AS codeserver
 
 ARG TARGETPLATFORM="linux/amd64" \
     BUILDPLATFORM="linux/amd64" \
-    INSTALLDIR="/kubed/bin"
+    INSTALLDIR="/kubed/bin" \
+    KUBED_KRM_VERSION="0.0.5"
 
 USER root
 
@@ -91,7 +92,11 @@ USER root
 COPY --from=krm --chown=coder:coder /kubed/bin /kubed/bin
 COPY --from=krm --chown=coder:coder /kubed/kustomize /kubed/kustomize
 
-RUN <<EOF 
+RUN <<EOF
+# kubectl-kubed: the exec KRM function (krm-py) that app kustomizations call.
+# The base image has no venv module, so it goes in system-wide.
+pip install --break-system-packages --no-cache-dir "kubed-krm==${KUBED_KRM_VERSION}"
+
 # update the bashrc
 cat <<EOT >> /home/coder/.bashrc
 

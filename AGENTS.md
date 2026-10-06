@@ -23,7 +23,7 @@ annotations from an app's `kustomization.yaml`:
 | `kubectl build <dir>` | `kustomize build` with alpha plugins + helm + exec + network |
 | `kubectl up <dir>` | build → `kubectl apply` (applyset + prune, server-side per annotation) |
 | `kubectl down <dir>` | build → `kubectl delete` |
-| `kubectl plan <dir>` | build → `kubectl diff` (create/update) + a membership-based applyset prune preview — read-only |
+| `kubectl plan <dir>` | build → `kubectl diff` (create/update) + `up`'s apply as a server dry-run for the applyset prune — read-only |
 
 ## Rules
 
@@ -37,9 +37,11 @@ annotations from an app's `kustomization.yaml`:
 - **Plugins run under `#!/usr/bin/env bash`.** Keep them POSIX-ish bash and test
   with `bash`, not the interactive shell (which may be zsh — `read -a`/arrays
   differ). Match the terse style of the existing scripts.
-- **`kubectl plan` is read-only** (server-side dry-run + a get-only prune pass) —
-  safe to run anytime. Prune preview is reconstructed from the live applyset
-  parent's membership; `kubectl diff` has no `--applyset` flag.
+- **`kubectl plan` is read-only** — both passes are server-side dry-runs, safe
+  to run anytime. `kubectl diff` has no `--applyset` flag, so the diff input is
+  stamped with the `part-of` label `up` adds, and the prune preview is `up`'s
+  own apply with `--dry-run=server`. Not `--dry-run=client`: its local patcher
+  fails on some CRDs, and kubectl skips the prune when any object fails.
 - **Verify external references.** Before pinning any `uses:` action, check
   `gh api repos/<owner>/<repo>/releases/latest`. (`duplocloud/version-bump` is a
   first-party action and deliberately floats on `@main`.)
