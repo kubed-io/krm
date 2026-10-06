@@ -43,7 +43,7 @@ Each `kubectl/kubectl-<name>` is a plugin invoked as `kubectl <name>`. `build`,
 - Shebang is `#!/usr/bin/env bash`; **test with `bash`**, not the interactive
   shell — array/`read -a` semantics differ under zsh.
 - Keep the terse style of the existing scripts; add a header comment explaining
-  any non-obvious behavior (e.g. why `plan` reconstructs applyset prune itself).
+  any non-obvious behavior (e.g. why `plan` stamps the applyset label itself).
 - `/kubed/bin` is a *copy* of `kubectl/` baked into the image; changes ship on
   the next image build. To iterate live in a pod, copy the edited file into
   `/kubed/bin` too.

@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- `kubectl plan` no longer shows every object losing its `applyset.kubernetes.io/part-of` label, so an app that is in sync plans clean.
+- `kubectl plan` previews prunes with `up`'s own apply as a server dry-run, so it lists what `up` would delete, including cluster-scoped members it used to skip.
+- `kubectl plan` works on multi-namespace apps with `apply-set: "false"`; like `up`, it passes `--namespace` only with an applyset.
+
 ## [0.0.20] - 2026-09-12
 
 ## [0.0.19] - 2026-09-02
