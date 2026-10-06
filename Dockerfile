@@ -16,6 +16,7 @@ WORKDIR ${WORKDIR}
 ENV KUBECONFIG=${WORKDIR}/.kube/config \
     XDG_CONFIG_HOME=${WORKDIR} \
     ENABLE_ALPHA_PLUGINS="true" \
+    KUBECTL_APPLYSET="true" \
     PATH="${WORKDIR}/.krew/bin:${WORKDIR}/bin:$PATH" \
     HELM_CACHE_HOME=${WORKDIR}/.helm/cache \
     HELM_CONFIG_HOME=${WORKDIR}/.helm/config \
@@ -76,6 +77,9 @@ EOF
 
 USER vscode
 
+# kubectl up applies with --applyset, an alpha flag kubectl refuses without this
+ENV KUBECTL_APPLYSET="true"
+
 ## 
 # Now codeserver version as well
 ##
@@ -101,13 +105,11 @@ pip install --break-system-packages --no-cache-dir "kubed-krm==${KUBED_KRM_VERSI
 cat <<EOT >> /home/coder/.bashrc
 
 export PATH="/kubed/.krew/bin:/kubed/bin:\$PATH"
-export KUBECTL_APPLYSET="true"
 
 EOT
 cat <<EOT >> /home/coder/.profile
 
 export PATH="/kubed/.krew/bin:/kubed/bin:\$PATH"
-export KUBECTL_APPLYSET="true"
 
 EOT
 EOF
@@ -117,6 +119,7 @@ USER coder
 ENV KUBECONFIG=/kubed/.kube/config \
     XDG_CONFIG_HOME=/kubed \
     ENABLE_ALPHA_PLUGINS="true" \
+    KUBECTL_APPLYSET="true" \
     PATH="/kubed/.krew/bin:/kubed/bin:$PATH" \
     HELM_CACHE_HOME=/kubed/.helm/cache \
     HELM_CONFIG_HOME=/kubed/.helm/config \
