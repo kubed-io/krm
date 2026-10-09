@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.0.25] - 2026-10-09
+
 ### Changed
 
 - Every image sets `KUBECTL_APPLYSET=true` in its environment instead of only in the codeserver login shell, so `kubectl up` can use `--applyset` from any process, not just an interactive shell.
