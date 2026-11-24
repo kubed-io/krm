@@ -88,7 +88,7 @@ FROM kubed/devcontainers:codeserver AS codeserver
 ARG TARGETPLATFORM="linux/amd64" \
     BUILDPLATFORM="linux/amd64" \
     INSTALLDIR="/kubed/bin" \
-    KUBED_KRM_VERSION="0.0.8"
+    KUBED_KRM_VERSION="0.0.9"
 
 USER root
 
